@@ -1,7 +1,6 @@
 package GeometryDashTriggers;
 
 import GeometryDashTriggers.Triggers.Trigger;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -9,21 +8,22 @@ import java.util.concurrent.ConcurrentHashMap;
 public class GameMap {
     private Map<Integer, Vector<Trigger>> runningTriggersByGroup = new ConcurrentHashMap<>();//실행중인 트리거 일람(그룹별)
     private Map<Integer, LinkedList<Trigger>> triggerListByGroup = new HashMap<>();//그룹별 트리거(실행요청시 그 그룹에 해당한 리스트들의 트리거 실행)
-    private LinkedList<Trigger> initTriggers;//그룹별 트리거(실행요청시 그 그룹에 해당한 리스트들의 트리거 실행)
-    private Map<Integer, Integer> counts = new ConcurrentHashMap<>();//변수
+    private List<Trigger> initTriggers = new LinkedList<>();//그룹별 트리거(실행요청시 그 그룹에 해당한 리스트들의 트리거 실행)
+    private Map<Integer, CountInteger> counts = new ConcurrentHashMap<>();//변수
 
     public GameMap(){
-
     }
 
 
 
-    public void addTriggers(Trigger trigger, int group){
+    public void addTriggers(Trigger trigger){
         trigger.setGameMap(this);
-        if (!runningTriggersByGroup.containsKey(group)) {
-            runningTriggersByGroup.put(group, new Vector<>());
-        }
-        triggerListByGroup.get(group).add(trigger);
+        trigger.groups.forEach(group -> {
+            if (!triggerListByGroup.containsKey(group)) {
+                triggerListByGroup.put(group, new LinkedList<>());
+            }
+            triggerListByGroup.get(group).add(trigger);
+        });
     }
 
     public void addInitTriggers(Trigger trigger){
@@ -32,10 +32,13 @@ public class GameMap {
 
     public void runTriggers(int group){
         if (!triggerListByGroup.containsKey(group)){
+//            System.out.println("Debug: nothing in group "+group);
             return;
         }
+//        System.out.println("Debug: size of group "+triggerListByGroup.get(group).size());
         triggerListByGroup.get(group).forEach(trigger -> {
-            if((trigger.multiTriggered || !trigger.run)&&trigger.toggle) {
+            if((trigger.multiTriggered || !trigger.run)&&!trigger.toggle) {
+//                System.out.println("Debug: run "+trigger.getClass().getName());
                 trigger.run = true;
                 if (!runningTriggersByGroup.containsKey(group)) {
                     runningTriggersByGroup.put(group, new Vector<>());
@@ -48,21 +51,20 @@ public class GameMap {
     }
 
     public void stopTriggers(int group){
-        if (!triggerListByGroup.containsKey(group)){
+        if (!runningTriggersByGroup.containsKey(group)){
             return;
         }
-        runningTriggersByGroup.get(group).forEach(trigger -> {
-            trigger.stopTrigger();
-            runningTriggersByGroup.remove(group);
-        });
+        runningTriggersByGroup.get(group).forEach(Trigger::stopTrigger);
+        runningTriggersByGroup.remove(group);
     }
 
     public void toggleTriggers(int group, boolean toggleMode){
         if (!triggerListByGroup.containsKey(group)){
             return;
         }
-        runningTriggersByGroup.get(group).forEach(trigger -> trigger.toggleTrigger(toggleMode));
-        if (toggleMode){
+        triggerListByGroup.get(group).forEach(trigger -> trigger.toggleTrigger(toggleMode));
+
+        if(toggleMode){
             stopTriggers(group);
         }else {
             runTriggers(group);
@@ -70,24 +72,26 @@ public class GameMap {
     }
 
     public void start(){
-        initTriggers.forEach(Thread::start);
+        initTriggers.forEach(trigger -> {
+            trigger.setGameMap(this);
+            trigger.start();
+        });
     }
 
-    public int getCount(int index){
-        if(counts.containsKey(index)){
-            counts.put(index, 0);
+    public int getID(int ID){
+        if (counts.containsKey(ID)) {
+            return counts.get(ID).countInt;
+        } else {
+            counts.put(ID, new CountInteger(0));
             return 0;
-        }else {
-            return counts.get(index);
         }
     }
 
-    public void addCount(int index, int number){
-        if(counts.containsKey(index)){
-            counts.put(index, number);
-        }else {
-            int count = counts.get(index) + number;
-            counts.replace(index, count);
+    public void addCount(int ID, int number){
+        if (counts.containsKey(ID)) {
+            counts.get(ID).add(number);
+        } else {
+            counts.put(ID, new CountInteger(number));
         }
     }
 }

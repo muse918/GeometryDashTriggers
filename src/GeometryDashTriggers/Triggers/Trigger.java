@@ -9,7 +9,7 @@ public abstract class Trigger extends Thread implements Cloneable{
     //상수
     public final Set<Integer> groups;
     public final boolean multiTriggered;
-    public final int targetGroup;
+    public final int target;
     protected GameMap gameMap;//GameMap에서 직접 실행할때 전달
 
     //실행시 사용
@@ -19,10 +19,10 @@ public abstract class Trigger extends Thread implements Cloneable{
     //실행후 사용
     protected boolean stop = false;
 
-    protected Trigger(Set<Integer> groups, boolean multiTriggered, int targetGroup) {
+    protected Trigger(Set<Integer> groups, boolean multiTriggered, int target) {
         this.groups = groups;
         this.multiTriggered = multiTriggered;
-        this.targetGroup = targetGroup;
+        this.target = target;
     }
 
 
